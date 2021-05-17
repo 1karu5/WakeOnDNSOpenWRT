@@ -12,6 +12,8 @@ COPY --chown=build Makefile /home/build/openwrt/package/wakeondns/
 COPY --chown=build src /home/build/openwrt/package/wakeondns/src
 COPY --chown=build files /home/build/openwrt/package/wakeondns/files
 
+RUN chmod +x /home/build/openwrt/package/wakeondns/files/etc/init.d/wakeondns
+
 RUN cd /home/build/openwrt/ && ./scripts/feeds install wakeondns
 
 CMD bash -c "make package/wakeondns/compile -j1 V=s"

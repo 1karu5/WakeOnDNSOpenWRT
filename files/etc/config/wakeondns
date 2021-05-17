@@ -1,4 +1,6 @@
 
 config wakeondns sample_config
-	option duration 10
 	option enabled 1
+	option device "br-lan"
+	option dnsname "home.lan"
+	option macaddress "ABC"

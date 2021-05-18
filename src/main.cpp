@@ -2,10 +2,12 @@
 #include <pcap.h>
 #include <bitset>
 #include <string>
+#include "Awakener.h"
 
-int READ_TIMEOUT = 10;
-unsigned int SNAPLEN = 65536;
-int ETHERNET_HEADER_LENGTH = 14;
+#define READ_TIMEOUT 10
+#define SNAPLEN 65536
+#define ETHERNET_HEADER_LENGTH 14
+#define VERBOSE false
 
 
 /* 4 bytes IP address */
@@ -59,7 +61,10 @@ typedef struct dns_header {      // https://datatracker.ietf.org/doc/html/rfc103
 
 void got_packet(std::uint8_t *args, const struct pcap_pkthdr *header,
                 const std::uint8_t *pkt_data) {
-    std::uint8_t *packet_end = (std::uint8_t * )(pkt_data + header->len);
+    Awakener *awaker = reinterpret_cast<Awakener *>(args);
+
+
+    std::uint8_t *packet_end = (std::uint8_t *) (pkt_data + header->len);
 
     ip_header *ih;
     udp_header *uh;
@@ -85,36 +90,42 @@ void got_packet(std::uint8_t *args, const struct pcap_pkthdr *header,
         return;
     }
 
-    /* print ip addresses and udp ports */
-    printf("%d.%d.%d.%d:%d -> %d.%d.%d.%d:%d, ",
-           ih->saddr.byte1,
-           ih->saddr.byte2,
-           ih->saddr.byte3,
-           ih->saddr.byte4,
-           sport,
-           ih->daddr.byte1,
-           ih->daddr.byte2,
-           ih->daddr.byte3,
-           ih->daddr.byte4,
-           dport);
-    printf("QR: %d qdcount: %d ancount: %d nscount: %d arcount: %d\n", dh->qr, dh->qdcount, dh->ancount, dh->nscount,
-           dh->arcount);
+    if (VERBOSE) {
+        printf("%d.%d.%d.%d:%d -> %d.%d.%d.%d:%d, ",
+               ih->saddr.byte1,
+               ih->saddr.byte2,
+               ih->saddr.byte3,
+               ih->saddr.byte4,
+               sport,
+               ih->daddr.byte1,
+               ih->daddr.byte2,
+               ih->daddr.byte3,
+               ih->daddr.byte4,
+               dport);
+        printf("QR: %d qdcount: %d ancount: %d nscount: %d arcount: %d\n", dh->qr, dh->qdcount, dh->ancount,
+               dh->nscount,
+               dh->arcount);
+    }
 
-    std::uint8_t *question_data = (std::uint8_t * )((std::uint8_t *) dh + sizeof(dns_header));
+    std::uint8_t *question_data = (std::uint8_t *) ((std::uint8_t *) dh + sizeof(dns_header));
 
     for (int i = 0; i < dh->qdcount; i++) {
         std::string domain_name;
         while (question_data < packet_end && (*question_data & 0b11000000) == 0) {
+            //TODO: https://datatracker.ietf.org/doc/html/rfc1035#section-4.1.4
             int label_length = *question_data;
             if (label_length == 0) {
                 break;
             }
-            std::cout << "label " << i << " found, data should be " << label_length << " long: ";
+            if (VERBOSE) {
+                std::cout << "label " << i << " found, data should be " << label_length << " long: ";
+            }
 
             if (question_data + 1 + label_length < packet_end) {
                 std::string label(question_data + 1, question_data + 1 + label_length);
-                std::cout << label << std::endl;
-
+                if (VERBOSE) {
+                    std::cout << label << std::endl;
+                }
                 if (domain_name.length() == 0) {
                     domain_name += label;
                 } else {
@@ -131,32 +142,38 @@ void got_packet(std::uint8_t *args, const struct pcap_pkthdr *header,
             std::uint16_t qtype = *((std::uint16_t *) question_data);
             question_data += 2;
             std::uint16_t qclass = *((std::uint16_t *) question_data);
-            std::cout << "domain: " << domain_name << " QTYPE: " << (int) qtype << std::endl;
+            if (VERBOSE) {
+                std::cout << "domain: " << domain_name << " QTYPE: " << (int) qtype << std::endl;
+            }
+            awaker->wake(domain_name);
         } else {
             std::cerr << "packet corrupted, qtype and qclass is missing" << std::endl;
             return;
         }
     }
-
-    std::cout << "read until: " << (void *) question_data << " packet length: " << (void *) packet_end << "  diff: "
-              << (void *) (packet_end - question_data) << std::endl;
-
+    if (VERBOSE) {
+        std::cout << "read until: " << (void *) question_data << " packet length: " << (void *) packet_end << "  diff: "
+                  << (void *) (packet_end - question_data) << std::endl;
+    }
 }
 
 
 int main(int argc, char *argv[]) {
 
-    if (argc != 4) {
-        std::cout << "usage: wakeondns DEVICE HOSTNAME MACADDRESS" << std::endl;
+    if (argc < 4 || argc % 2 != 0) {
+        std::cout << "usage: wakeondns DEVICE HOSTNAME MACADDRESS HOSTNAME MACADDRESS ..." << std::endl;
         return 0;
     }
 
     char *dev = argv[1];
-    std::string dnsname = std::string(argv[2]);
-    std::string macaddress = std::string(argv[3]);
+
+    Awakener awaker(dev);
+
+    for (int i = 2; i < argc; i += 2) {
+        awaker.add(std::string(argv[i]), std::string(argv[i + 1]));
+    }
 
     std::cout << "listening on \"" << dev << "\"" << std::endl;
-    std::cout << "waking " << dnsname << " (" << macaddress << ")" << std::endl;
 
     char errbuf[PCAP_ERRBUF_SIZE];
     struct bpf_program fp;
@@ -166,33 +183,33 @@ int main(int argc, char *argv[]) {
     pcap_t *handle;
     struct pcap_pkthdr header;    /* The header that pcap gives us */
     const std::uint8_t *packet;        /* The actual packet */
-    std::uint8_t *user_data = NULL;
+    std::uint8_t *user_data = (std::uint8_t *) &awaker;
 
     if (pcap_lookupnet(dev, &net, &mask, errbuf) == -1) {
-        fprintf(stderr, "Can't get netmask for device %s\n", dev);
+        std::cerr << "Can't get netmask for device " << dev << std::endl;
         net = 0;
         mask = 0;
     }
     handle = pcap_open_live(dev, SNAPLEN, 1, READ_TIMEOUT, errbuf);
     if (handle == NULL) {
-        fprintf(stderr, "Couldn't open device %s: %s\n", dev, errbuf);
+        std::cerr << "Couldn't open device " << dev << ": " << errbuf << std::endl;
         return -1;
     }
     if (pcap_datalink(handle) != DLT_EN10MB) {
-        fprintf(stderr, "This program works only on Ethernet networks.\n");
+        std::cerr << "This program works only on Ethernet networks." << std::endl;
         return -1;
     }
     if (pcap_compile(handle, &fp, filter_exp, 0, net) == -1) {
-        fprintf(stderr, "Couldn't parse filter %s: %s\n", filter_exp, pcap_geterr(handle));
+        std::cerr << "Couldn't parse filter " << filter_exp << ": " << pcap_geterr(handle) << std::endl;
         return -1;
     }
     if (pcap_setfilter(handle, &fp) == -1) {
-        fprintf(stderr, "Couldn't install filter %s: %s\n", filter_exp, pcap_geterr(handle));
+        std::cerr << "Couldn't install filter " << filter_exp << ": " << pcap_geterr(handle) << std::endl;
         return -1;
     }
 
     if (pcap_loop(handle, -1, got_packet, user_data) != 0) {
-        fprintf(stderr, "error from  pcap_loop: %s\n", pcap_geterr(handle));
+        std::cerr << "error from  pcap_loop: " << pcap_geterr(handle) << std::endl;
         return -1;
     }
 

@@ -3,7 +3,7 @@
 
 
 int READ_TIMEOUT = 10;
-int SNAPLEN = 65536;
+unsigned int SNAPLEN = 65536;
 
 
 /* 4 bytes IP address */
@@ -38,6 +38,22 @@ typedef struct udp_header{
 }udp_header;
 
 
+typedef struct dns_header{      // https://datatracker.ietf.org/doc/html/rfc1035#section-4.1.1
+    std::uint16_t id;
+    bool qr : 1;
+    unsigned int opcode : 4;
+    bool aa : 1;
+    bool tc : 1;
+    bool rd : 1;
+    bool ra : 1;
+    unsigned int z : 3;
+    unsigned int rcode : 4;
+    std::uint16_t qdcount;
+    std::uint16_t ancount;
+    std::uint16_t nscount;
+    std::uint16_t arcount;
+}dns_header;
+
 
 void got_packet(u_char *args, const struct pcap_pkthdr *header,
                 const u_char *pkt_data){
@@ -48,6 +64,7 @@ void got_packet(u_char *args, const struct pcap_pkthdr *header,
     //char timestr[16];
     ip_header *ih;
     udp_header *uh;
+    dns_header *dh;
     u_int ip_len;
     u_short sport,dport;
     time_t local_tv_sec;
@@ -72,6 +89,8 @@ void got_packet(u_char *args, const struct pcap_pkthdr *header,
     sport = ntohs( uh->sport );
     dport = ntohs( uh->dport );
 
+    dh = (dns_header *) ((u_char*)uh + 8);
+
     /* print ip addresses and udp ports */
     printf("%d.%d.%d.%d.%d -> %d.%d.%d.%d.%d\n",
            ih->saddr.byte1,
@@ -88,6 +107,16 @@ void got_packet(u_char *args, const struct pcap_pkthdr *header,
 
 
 int main(int argc, char *argv[]) {
+
+    std::cout << "u_short" << sizeof(u_short) << std::endl;
+    std::cout << "u_int" << sizeof(u_int) << std::endl;
+    std::cout << "u_char" << sizeof(u_char) << std::endl;
+    std::cout << "udp_header" << sizeof(udp_header) << std::endl;
+    std::cout << "dns_header" << sizeof(dns_header) << std::endl;
+    std::cout << "ip_header" << sizeof(ip_header) << std::endl;
+    std::cout << "ip_address" << sizeof(ip_address) << std::endl;
+
+
 
     if(argc != 4){
         std::cout << "usage: wakeondns DEVICE HOSTNAME MACADDRESS" << std::endl;

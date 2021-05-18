@@ -16,4 +16,4 @@ RUN chmod +x /home/build/openwrt/package/wakeondns/files/etc/init.d/wakeondns
 
 RUN cd /home/build/openwrt/ && ./scripts/feeds install wakeondns
 
-CMD bash -c "make package/wakeondns/compile -j1 V=s"
+CMD bash -c "make package/wakeondns/compile V=s"

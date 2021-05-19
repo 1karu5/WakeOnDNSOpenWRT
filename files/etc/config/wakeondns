@@ -1,6 +1,16 @@
 
-config wakeondns sample_config
+config wakeondns lan
 	option enabled 1
-	option device "br-lan"
+	option listendevice "br-lan"
+	option senddevice "br-lan"
 	option dnsname "home.lan"
-	option macaddress "ABC"
+	option macaddress "D0:50:99:16:9C:C0"
+
+
+config wakeondns wg
+	option enabled 1
+	option listendevice "wg"
+	option senddevice "br-lan"
+	option dnsname "home.lan"
+	option macaddress "D0:50:99:16:9C:C0"
+

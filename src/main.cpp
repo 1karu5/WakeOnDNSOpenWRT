@@ -6,20 +6,21 @@
 
 int main(int argc, char *argv[]) {
 
-    if (argc < 4 || argc % 2 != 0) {
-        std::cout << "usage: wakeondns DEVICE HOSTNAME MACADDRESS HOSTNAME MACADDRESS ..." << std::endl;
+    if (argc != 5) {
+        std::cout << "usage: wakeondns LISTENDEVICE SENDDEVICE HOSTNAME MACADDRESS " << std::endl;
         return 0;
     }
 
-    char *dev = argv[1];
+    char* listendev = argv[1];
+    char* senddev = argv[2];
+    char* hostname = argv[3];
+    char* macaddress = argv[4];
 
-    Awakener awaker(dev);
+    Awakener awaker(senddev);
 
-    for (int i = 2; i < argc; i += 2) {
-        awaker.add(std::string(argv[i]), std::string(argv[i + 1]));
-    }
+    awaker.add(hostname, macaddress);
 
-    PacketListener p(&awaker, dev, "udp and port 53 and (udp[10] & 128 = 0)");
+    PacketListener p(&awaker, listendev, "udp and port 53 and (udp[10] & 128 = 0)");
 
     p.run();
 

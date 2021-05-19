@@ -8,19 +8,21 @@ PROG=/usr/bin/wakeondns
 start_instance() {
 	local cfg="$1"
 	local enabled
-	local device
+	local senddevice
+	local listendevice
 	local dnsname
 	local macaddress
 
 	config_get_bool enabled "$cfg" 'enabled' 0
-	config_get device "$cfg" 'device' 0
+	config_get senddevice "$cfg" 'senddevice' 0
+	config_get listendevice "$cfg" 'listendevice' 0
 	config_get dnsname "$cfg" 'dnsname' 0
 	config_get macaddress "$cfg" 'macaddress' 0
 
 	[ $enabled -gt 0 ] || return 1
 
   procd_open_instance
-  procd_set_param command $PROG $device $dnsname $macaddress
+  procd_set_param command $PROG $listendevice $senddevice $dnsname $macaddress
   # Send stdout/stderr output to the system log
 	# Use command logread to see the log
 	procd_set_param stderr 1

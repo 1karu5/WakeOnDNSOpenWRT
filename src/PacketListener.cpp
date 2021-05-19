@@ -25,8 +25,15 @@ PacketListener::PacketListener(const Awakener *aw, const std::string &device, co
         std::cerr << "Couldn't open device " << device << ": " << errbuf << std::endl;
         throw std::invalid_argument("error");
     }
-    if (pcap_datalink(handle_) != DLT_EN10MB) {
-        std::cerr << "This program works only on Ethernet networks, not for " << pcap_datalink(handle_) << std::endl;
+    int link_type = pcap_datalink(handle_);
+    if (link_type == DLT_EN10MB) {
+        std::cout << "reading Ethernet interface" << std::endl;
+        isRawInterface_ = false;
+    } else if (link_type == DLT_RAW) {
+        std::cout << "reading raw interface" << std::endl;
+        isRawInterface_ = true;
+    } else {
+        std::cerr << "This program works only on Ethernet networks, not for " << link_type << std::endl;
         throw std::invalid_argument("error");
     }
     if (pcap_compile(handle_, &fp, filter.c_str(), 0, net) == -1) {
@@ -56,6 +63,10 @@ const Awakener *PacketListener::getAwakener() {
     return aw_;
 }
 
+bool PacketListener::isRawInterface() const {
+    return isRawInterface_;
+}
+
 
 void got_packet(std::uint8_t *current_packetlistener_this, const struct pcap_pkthdr *header,
                 const std::uint8_t *pkt_data) {
@@ -70,7 +81,7 @@ void got_packet(std::uint8_t *current_packetlistener_this, const struct pcap_pkt
     std::uint16_t sport, dport;
 
     /* retireve the position of the ip header */
-    ih = (ip_header *) (pkt_data + ETHERNET_HEADER_LENGTH); //length of ethernet header
+    ih = (ip_header *) (pkt_data + (packetListener->isRawInterface() ? 0 : ETHERNET_HEADER_LENGTH)); //length of ethernet header
 
     /* retireve the position of the udp header */
     ip_len = (ih->ver_ihl & 0xf) * 4;

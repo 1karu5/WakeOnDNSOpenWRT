@@ -16,9 +16,11 @@ public:
     ~PacketListener();
     void run();
     const Awakener* getAwakener();
+    bool isRawInterface() const;
 private:
     pcap_t *handle_;
     const Awakener *aw_;
+    bool isRawInterface_ = false;
 };
 
 void got_packet(std::uint8_t *args, const struct pcap_pkthdr *header,

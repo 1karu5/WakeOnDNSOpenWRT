@@ -5,6 +5,6 @@ set(CMAKE_CXX_STANDARD 17)
 
 include(FindPCAP.cmake)
 
-add_executable(wakeondns main.cpp Awakener.cpp Awakener.h)
+add_executable(wakeondns main.cpp Awakener.cpp Awakener.h PacketListener.cpp PacketListener.h)
 target_link_libraries(wakeondns ${PCAP_LIBRARY})
 INSTALL(TARGETS wakeondns RUNTIME DESTINATION /usr/bin/)

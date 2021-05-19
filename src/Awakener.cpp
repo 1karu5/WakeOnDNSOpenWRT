@@ -1,7 +1,6 @@
 
 #include "Awakener.h"
 
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -29,7 +28,7 @@ Awakener::~Awakener() {
     close(open_socket_);
 }
 
-void Awakener::wake(const std::string &name) {
+void Awakener::wake(const std::string &name) const {
     if (hosts_.count(name)) {
         std::cout << "waking " << name << " with mac " << hosts_.at(name) << std::endl;
         send_wol(hosts_.at(name));
@@ -63,7 +62,7 @@ int Awakener::start_socket() {
     return sock;
 }
 
-void Awakener::send_wol(const std::string &mac) {
+void Awakener::send_wol(const std::string &mac) const{
 
     unsigned char packet[PACKET_BUF];
     struct sockaddr_in addr;

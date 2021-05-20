@@ -28,9 +28,9 @@ Awakener::~Awakener() {
     close(open_socket_);
 }
 
-void Awakener::wake(const std::string &name) const {
+void Awakener::wake(const std::string& wakerip, const std::string& name) const {
     if (hosts_.count(name)) {
-        std::cout << "waking " << name << " with mac " << hosts_.at(name) << std::endl;
+        std::cout << wakerip << " waking " << name << " with mac " << hosts_.at(name) << std::endl;
         send_wol(hosts_.at(name));
     }
 }

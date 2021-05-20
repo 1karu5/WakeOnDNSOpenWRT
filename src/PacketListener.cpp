@@ -1,5 +1,6 @@
 #include "PacketListener.h"
 #include <iostream>
+#include <sstream>
 #include <pcap.h>
 #include <bitset>
 
@@ -98,6 +99,9 @@ void got_packet(std::uint8_t *current_packetlistener_this, const struct pcap_pkt
         return;
     }
 
+    std::ostringstream fromIpStream;
+    fromIpStream << (int)ih->saddr.byte1 << "." << (int)ih->saddr.byte2 << "." << (int)ih->saddr.byte3 << "." << (int)ih->saddr.byte4;
+
     if (VERBOSE) {
         printf("%d.%d.%d.%d:%d -> %d.%d.%d.%d:%d, ",
                ih->saddr.byte1,
@@ -153,7 +157,7 @@ void got_packet(std::uint8_t *current_packetlistener_this, const struct pcap_pkt
             if (VERBOSE) {
                 std::cout << "domain: " << domain_name << " QTYPE: " << (int) qtype << std::endl;
             }
-            packetListener->getAwakener()->wake(domain_name);
+            packetListener->getAwakener()->wake(fromIpStream.str(), domain_name);
         } else {
             std::cerr << "packet corrupted, qtype and qclass is missing" << std::endl;
             return;

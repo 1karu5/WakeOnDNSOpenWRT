@@ -10,7 +10,7 @@ class Awakener {
 public:
     Awakener(std::string  interface_name );
     ~Awakener();
-    void wake(const std::string& name) const;
+    void wake(const std::string& wakerip, const std::string& name) const;
     void add(const std::string& name, const std::string& mac);
 private:
     std::map<std::string, std::string> hosts_;
